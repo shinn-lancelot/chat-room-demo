@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>chat-room</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .nickname-box {
+      position: fixed;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 100;
+      background-color: rgba(0, 0, 0);
+      display: flex;
+      flex-flow: column nowrap;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 0 15%;
+      box-sizing: border-box;
+    }
+    .nickname-box label {
+      color: #fff;
+    }
+    .nickname-box #nickname {
+      border: 0;
+      width: 100%;
+      font-size: 14px;
+      line-height: 3;
+      margin-top: 20px;
+      border-radius: 3px;
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+
+    .wrapper {
+      width: 100%;
+    }
+    .room-box {
+      width: 1000px;
+      margin: 0 auto;
+    }
+    .title {
+      font-size: 30px;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .top {
+      width: 100%;
+      height: 500px;
+      border: 1px solid #000;
+      box-sizing: border-box;
+      font-size: 0;
+      margin-top: 10px;
+      display: flex;
+      flex-flow: row nowrap;
+      justify-content: center;
+      align-items: center;
+    }
+    .bottom {
+      width: 100%;
+      height: 50px;
+      border: 1px solid #000;
+      box-sizing: border-box;
+      padding: 9px 10px;
+      position: relative;
+    }
+    .left {
+      border: 1px solid #000;
+      display: inline-block;
+      width: 80%;
+      height: 100%;
+      box-sizing: border-box;
+      font-size: 14px;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .right {
+      border: 1px solid #000;
+      display: inline-block;
+      width: 20%;
+      height: 100%;
+      box-sizing: border-box;
+      font-size: 14px;
+      display: flex;
+      flex-flow: column nowrap;
+      justify-content: flex-start;
+      align-items: center;
+      overflow-y: auto;
+    }
+
+    .user {
+      border: 0;
+      box-sizing: border-box;
+      color: blue;
+    }
+
+    #message {
+      resize: none;
+      width: calc(100% - 60px);
+      height: 100%;
+      outline: none;
+      font-size: 18px;
+    }
+
+    #submit {
+      position: absolute;
+      top: 9px;
+      right: 10px;
+      color: #fff;
+      background-color: rgb(53, 170, 58);
+      box-sizing: border-box;
+      height: 30px;
+      line-height: 30px;
+      padding: 0 15px;
+      font-size: 14px;
+      border-radius: 3px;
+    }
+
+    .message-box {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .message-nickname {
+      font-size: 16px;
+      color: blue;
+    }
+    .message {
+      box-sizing: border-box;
+      font-size: 14px;
+      padding: 5px calc(14px * 2);
+    }
+    .join-tip, .leave-tip {
+      font-size: 14px;
+      text-align: center;
+      color: rgb(131, 131, 131);
+    }
+    .myself {
+      color: darkred;
+    }
+    .message-myself {
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="room-box">
+      <div class="title">聊天室demo</div>
+      <div class="top">
+        <div class="left">
+        </div>
+        <div class="right">
+        </div>
+      </div>
+      <div class="bottom">
+        <input name="message" id="message" value="" placeholder="请输入要说的话">
+        <button type="button" id="submit">发送</button>
+      </div>
+    </div>
+
+    <div class="nickname-box">
+      <label for="nickname">请输入你的昵称并按回车</label>
+      <input type="text" name="nickname" id="nickname" value="" placeholder="请输入你的昵称">
+    </div>
+  </div>
+  <script>
+    var ws = '';
+    var server  = '';
+    var fd = '';
+    var nickname = '';
+    var nicknameObj = '';
+    var submitObj = '';
+    var messageObj = '';
+
+    nicknameObj = document.querySelector('#nickname');
+    submitObj = document.querySelector('#submit');
+    messageObj = document.querySelector('#message');
+
+    submitObj.addEventListener('click', function () {
+      sendMessage(messageObj);
+    });
+    
+    nicknameObj.addEventListener('keyup', function (e) {
+      if (e.keyCode == 13) {
+        if (!this.value) {
+          alert('昵称不能为空');
+          return;
+        }
+        nickname = this.value;
+
+        // 初始并连接ws
+        initWS();
+        recieveWS();
+        closeWS();
+        errorWS();
+      }
+    });
+
+    messageObj.addEventListener('keyup', function (e) {
+      if (e.keyCode == 13) {
+        sendMessage(this);
+      }
+    });
+
+    function sendMessage(obj) {
+      var message = obj.value;
+      if (!message) {
+        return;
+      }
+      sendWS(message);
+      obj.value = '';
+    }
+
+    function initWS () {
+      server = 'ws://127.0.0.1:9501?nickname=' + nickname;
+      ws = new WebSocket(server);
+      ws.onopen = function (e) {
+        console.log('connected');
+        document.querySelector('.nickname-box').setAttribute('style', 'display: none;');
+      }
+    }
+    
+    function closeWS() {
+      ws.onclose = function (e) {
+        console.log('disconnected');
+      }
+    }
+
+    function sendWS(message) {
+      ws.send(message);
+    }
+    
+    function recieveWS() {
+      ws.onmessage = function (e) {
+        console.log('recieved message: ' + e.data);
+        var data = JSON.parse(e.data);
+        // 推送给本人
+        if (data.type == 0) {
+          fd = data.fd;
+
+          if (data.data instanceof Array) {
+            for (var i = 0, len = data.data.length; i < len; i++) {
+              // 右侧用户列表加入用户
+              var userEl = document.createElement('div');
+              userEl.innerHTML = data.data[i].nickname + '(ID:' + data.data[i].fd + ')';
+              userEl.setAttribute('class', 'user');
+              if (data.data[i].fd == fd) {
+                userEl.setAttribute('class', 'user myself');
+              }
+              userEl.setAttribute('data-fd', data.data[i].fd);
+              document.querySelector('.right').appendChild(userEl);
+            }
+          }
+        // 新用户加入
+        } else if (data.type == 1) {
+          // 左侧聊天窗口加入文本
+          var joinTipEl = document.createElement('div');
+          joinTipEl.setAttribute('class', 'join-tip');
+          joinTipEl.innerHTML = data.nickname + '(ID:' + data.fd + ') 加入群聊';
+          document.querySelector('.left').appendChild(joinTipEl);
+
+          // 右侧用户列表加入用户
+          var userEl = document.createElement('div');
+          userEl.innerHTML = data.nickname + '(ID:' + data.fd + ')';
+          userEl.setAttribute('class', 'user');
+          if (data.fd == fd) {
+            userEl.setAttribute('class', 'user myself');
+          }
+          userEl.setAttribute('data-fd', data.fd);
+          document.querySelector('.right').appendChild(userEl);
+
+        // 发送聊天消息
+        } else if (data.type == 2) {
+          var messageBoxEl = document.createElement('div');
+          var messageNicknameEl = document.createElement('div');
+          var messageEl = document.createElement('div');
+
+          messageBoxEl.setAttribute('class', 'message-box');
+          messageNicknameEl.setAttribute('class', 'message-nickname');
+          messageEl.setAttribute('class', 'message');
+          if (data.fd == fd) {
+            messageNicknameEl.setAttribute('class', 'message-nickname myself message-myself');
+            messageEl.setAttribute('class', 'message message-myself');
+          }
+
+          messageNicknameEl.innerHTML = data.nickname + '(ID:' + data.fd + ')';
+          messageEl.innerHTML = data.data;
+          messageBoxEl.appendChild(messageNicknameEl);
+          messageBoxEl.appendChild(messageEl);
+          document.querySelector('.left').appendChild(messageBoxEl);
+        
+        // 用户离线
+        } else if (data.type == 3) {
+          // 昨天聊天窗口加入离开提示文本
+          var leaveTipEl = document.createElement('div');
+          leaveTipEl.setAttribute('class', 'leave-tip');
+          leaveTipEl.innerHTML = data.nickname + '(ID:' + data.fd + ') 离开群聊';
+          document.querySelector('.left').appendChild(leaveTipEl);
+
+          // 右侧用户列表移除离线用户
+          var users = document.querySelectorAll('.user');
+          for (var i = 0, len = users.length; i < len; i++) {
+            if (users[i].getAttribute('data-fd') == data.fd) {
+              users[i].remove();
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    function errorWS() {
+      ws.onerror = function (e) {
+        console.log('error: ' + e.data);
+      }
+    }
+  </script>
+</body>
+</html>
