@@ -267,6 +267,7 @@
           joinTipEl.setAttribute('class', 'join-tip');
           joinTipEl.innerHTML = data.nickname + '(ID:' + data.fd + ') 加入群聊';
           document.querySelector('.left').appendChild(joinTipEl);
+          scrollToBottom('.left');
 
           // 右侧用户列表加入用户
           var userEl = document.createElement('div');
@@ -297,6 +298,7 @@
           messageBoxEl.appendChild(messageNicknameEl);
           messageBoxEl.appendChild(messageEl);
           document.querySelector('.left').appendChild(messageBoxEl);
+          scrollToBottom('.left');
         
         // 用户离线
         } else if (data.type == 3) {
@@ -305,6 +307,7 @@
           leaveTipEl.setAttribute('class', 'leave-tip');
           leaveTipEl.innerHTML = data.nickname + '(ID:' + data.fd + ') 离开群聊';
           document.querySelector('.left').appendChild(leaveTipEl);
+          scrollToBottom('.left');
 
           // 右侧用户列表移除离线用户
           var users = document.querySelectorAll('.user');
@@ -321,6 +324,13 @@
     function errorWS() {
       ws.onerror = function (e) {
         console.log('error: ' + e.data);
+      }
+    }
+
+    function scrollToBottom(el) {
+      var obj = document.querySelector(el);
+      if(obj.scrollHeight > obj.clientHeight) {
+        obj.scrollTop = obj.scrollHeight;
       }
     }
   </script>
